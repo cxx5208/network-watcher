@@ -1,0 +1,40 @@
+# Binaries
+bin/
+*.o
+*.exe
+
+# Generated eBPF Go bindings
+pkg/collector/*_bpfel.go
+pkg/collector/*_bpfeb.go
+pkg/collector/*_bpfel.o
+pkg/collector/*_bpfeb.o
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+coverage.out
+*.test
+
+# Environment
+.env
+.env.local
+
+# Lima VM
+.lima/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+*.tmp
