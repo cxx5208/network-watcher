@@ -3,10 +3,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go)](https://go.dev/)
 
-**Real-time network security monitoring using eBPF and AI-powered threat detection.**
+> **An experimental project exploring the intersection of eBPF, AI-powered security, and modern observability tools.**
 
-<img width="1115" height="759" alt="Screenshot 2026-01-30 at 7 37 11 PM" src="https://github.com/user-attachments/assets/f29cb54d-dfc2-4d01-b38d-86fef5f2c4a7" />
+<img width="1115" alt="Dashboard Screenshot" src="https://github.com/user-attachments/assets/f29cb54d-dfc2-4d01-b38d-86fef5f2c4a7" />
 
+---
+
+## About This Project
+
+This is a **learning experiment** that combines several cutting-edge technologies:
+
+| Technology | Purpose |
+|------------|---------|
+| **eBPF** | Kernel-level network monitoring without modifying kernel code |
+| **MCP (Model Context Protocol)** | AI tool integration for intelligent analysis |
+| **Cilium/eBPF Library** | Go bindings for eBPF program management |
+| **Real-time WebSockets** | Live dashboard updates |
+| **GeoIP + Threat Intelligence** | Location and risk-based scoring |
+
+### Why This Project?
+
+I built this to learn how modern security tools work under the hood:
+- How eBPF intercepts network calls at the kernel level
+- How AI can assist in threat detection and analysis
+- How to build production-ready observability dashboards
+- How tools like Cilium, Falco, and Tetragon approach security
 
 ---
 
@@ -14,16 +35,16 @@
 
 | Feature | Description |
 |---------|-------------|
-| **eBPF Monitoring** | Kernel-level interception of TCP connections |
-| **GeoIP Lookup** | Shows country/city for each destination |
+| **eBPF Monitoring** | Kernel-level interception of TCP connections via `kprobe/tcp_connect` |
+| **AI Analysis** | Pattern-based threat detection with risk scoring |
+| **GeoIP Lookup** | Country/city location for each destination |
 | **Risk Scoring** | 0-100 score based on app, port, location |
 | **Live Map** | Visual world map of connection destinations |
-| **Threat Detection** | Pattern matching for malware, botnets, shells |
+| **Threat Detection** | Regex patterns for malware, botnets, reverse shells |
 | **Whitelist** | One-click whitelisting of trusted apps |
-| **Dark/Light Mode** | Theme toggle with persistence |
-| **Keyboard Shortcuts** | Power-user navigation (F, R, E, T, ?) |
+| **Dark/Light Mode** | Theme toggle with localStorage persistence |
 | **Export** | JSON and CSV data export |
-| **Production Ready** | Security headers, rate limiting, health checks |
+| **Production Features** | Security headers, rate limiting, health checks |
 
 ---
 
@@ -34,7 +55,7 @@
 git clone https://github.com/cxx5208/network-watcher.git
 cd network-watcher
 
-# Build (requires clang, llvm)
+# Build (requires clang, llvm, libbpf)
 make build
 
 # Run (requires root for eBPF)
@@ -43,14 +64,25 @@ sudo ./bin/webui
 
 Open **http://localhost:8080**
 
+### For macOS Users
+
+eBPF requires Linux. Use Lima VM:
+
+```bash
+brew install lima
+limactl start --name=ebpf template://ubuntu
+limactl shell ebpf
+# Then build and run inside the VM
+```
+
 ---
 
 ## Demo
 
-1. Open the dashboard
+1. Open the dashboard at `http://localhost:8080`
 2. Type `google.com` in the URL input
 3. Click **Test** to trigger an unknown app alert
-4. Watch the risk score, GeoIP, and map update
+4. Watch the risk score, GeoIP, and map update in real-time
 5. Click **Whitelist** to mark as trusted
 
 ### Keyboard Shortcuts
@@ -68,44 +100,42 @@ Open **http://localhost:8080**
 ## Architecture
 
 ```
-Linux Kernel          User Space              Browser
-+-------------+      +--------------+      +------------+
-| tcp_connect |----->| Collector    |      | Dashboard  |
-|   kprobe    |      |      |       |      |     ^      |
-|      |      |      |      v       |      |     |      |
-| Perf Buffer |----->| Event Store  |----->| WebSocket  |
-+-------------+      |      |       |      |     |      |
-                     | Risk Scorer  |      | Map + List |
-                     |      |       |      +------------+
-                     | GeoIP Cache  |
-                     +--------------+
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────┐
+│  Linux Kernel   │     │    User Space    │     │   Browser   │
+├─────────────────┤     ├──────────────────┤     ├─────────────┤
+│  tcp_connect    │────▶│  eBPF Collector  │     │  Dashboard  │
+│    kprobe       │     │        │         │     │      ▲      │
+│       │         │     │        ▼         │     │      │      │
+│  Perf Buffer    │────▶│   Event Store    │────▶│  WebSocket  │
+└─────────────────┘     │        │         │     │      │      │
+                        │   Risk Scorer    │     │  Map + List │
+                        │        │         │     └─────────────┘
+                        │   GeoIP Cache    │
+                        └──────────────────┘
 ```
 
 ---
 
-## Risk Scoring
+## Risk Scoring Algorithm
 
-| Factor | Points |
-|--------|--------|
-| Unknown application | +30 |
-| Threat pattern match | +40 |
-| High-risk country (CN, RU, KP, IR) | +25 |
-| Unusual port (4444, 5555, 31337) | +20 |
+| Factor | Points | Reason |
+|--------|--------|--------|
+| Unknown application | +30 | Not in whitelist of known apps |
+| Threat pattern match | +40 | Matches malware/botnet regex |
+| High-risk country | +25 | CN, RU, KP, IR destinations |
+| Unusual port | +20 | 4444, 5555, 31337, etc. |
 
 ---
 
-## API Endpoints
+## Tech Stack
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /` | Web dashboard |
-| `GET /health` | Health check |
-| `GET /api/data` | Monitoring data |
-| `GET /api/fetch?url=&mode=` | Trigger URL fetch |
-| `GET /api/whitelist?app=` | Whitelist an app |
-| `GET /api/export/json` | Export JSON |
-| `GET /api/export/csv` | Export CSV |
-| `WS /ws` | Real-time events |
+| Component | Technology |
+|-----------|------------|
+| Language | Go 1.23+ |
+| eBPF Library | [cilium/ebpf](https://github.com/cilium/ebpf) |
+| WebSocket | [gorilla/websocket](https://github.com/gorilla/websocket) |
+| GeoIP | [ip-api.com](https://ip-api.com) |
+| Frontend | Vanilla JS + CSS |
 
 ---
 
@@ -113,25 +143,59 @@ Linux Kernel          User Space              Browser
 
 ```
 network-watcher/
-├── bpf/network.c           # eBPF program
-├── cmd/webui/main.go       # Web server + UI (~900 lines)
+├── bpf/
+│   └── network.c           # eBPF C program (kprobe)
+├── cmd/
+│   └── webui/
+│       └── main.go         # Web server + embedded UI (~940 lines)
 ├── pkg/
-│   ├── collector/          # eBPF loader
-│   ├── store/              # Event storage
-│   └── types/              # Data types
-├── .github/workflows/      # CI/CD
-└── Makefile
+│   ├── collector/          # eBPF loader and event reader
+│   ├── store/              # In-memory event storage
+│   └── types/              # Data structures and helpers
+├── Makefile                # Build automation
+└── README.md
 ```
 
 ---
 
-## Tech Stack
+## Inspirations & References
 
-- **Go** - Backend server
-- **eBPF** - Kernel-level monitoring
-- **WebSocket** - Real-time updates
-- **Three.js** - (Optional) 3D effects
-- **ip-api.com** - GeoIP lookup
+This project was inspired by and learned from these amazing projects:
+
+| Project | What I Learned |
+|---------|----------------|
+| [Cilium](https://github.com/cilium/cilium) | eBPF-based networking and security |
+| [Tetragon](https://github.com/cilium/tetragon) | Runtime security observability with eBPF |
+| [Falco](https://github.com/falcosecurity/falco) | Cloud-native runtime security |
+| [bcc](https://github.com/iovisor/bcc) | BPF compiler collection and examples |
+| [ebpf-go](https://github.com/cilium/ebpf) | Pure Go eBPF library |
+| [Pixie](https://github.com/pixie-io/pixie) | Observability with eBPF |
+| [MCP Protocol](https://modelcontextprotocol.io/) | AI tool integration patterns |
+
+### Learning Resources
+
+- [eBPF.io](https://ebpf.io/) - Official eBPF documentation
+- [Brendan Gregg's Blog](https://www.brendangregg.com/ebpf.html) - eBPF performance analysis
+- [Isovalent Labs](https://isovalent.com/labs/) - Hands-on eBPF tutorials
+- [Cilium Documentation](https://docs.cilium.io/) - Production eBPF usage
+
+---
+
+## Limitations & Future Ideas
+
+This is an experiment, not production software. Known limitations:
+
+- **IPv4 only** - No IPv6 support yet
+- **TCP only** - No UDP/ICMP monitoring
+- **No persistence** - Data is in-memory only
+- **Basic threat rules** - Simple regex patterns
+
+Future explorations:
+- [ ] Add eBPF tracepoints for file access monitoring
+- [ ] Integrate with actual LLM for smarter analysis
+- [ ] Add Prometheus metrics export
+- [ ] Container-aware process tracking
+- [ ] eBPF-based DNS query monitoring
 
 ---
 
@@ -139,11 +203,21 @@ network-watcher/
 
 - Linux kernel 5.4+ with BTF support
 - Go 1.23+
-- Clang/LLVM
-- Root privileges
+- Clang/LLVM (for eBPF compilation)
+- Root privileges (for eBPF)
 
 ---
 
 ## License
 
 MIT License - see [LICENSE](LICENSE)
+
+---
+
+## Contributing
+
+This is a learning project, but contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+*Built as a portfolio project to explore eBPF, AI tools, and modern security observability.*
