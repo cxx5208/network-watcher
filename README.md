@@ -5,7 +5,8 @@
 
 **Real-time network security monitoring using eBPF and AI-powered threat detection.**
 
-![Dashboard Screenshot](screenshot.png)
+<img width="1115" height="759" alt="Screenshot 2026-01-30 at 7 37 11 PM" src="https://github.com/user-attachments/assets/f29cb54d-dfc2-4d01-b38d-86fef5f2c4a7" />
+
 
 ---
 
